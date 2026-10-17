@@ -2,7 +2,8 @@
 
 一个本地优先的桌面电子书阅读器（TXT / EPUB / PDF），Electron + React + TypeScript。
 
-> **状态：不再维护（Unmaintained）。** 代码按现状提供，欢迎 fork；不保证 issue / PR 响应。
+> **状态：作者不再主动维护。** 代码按现状提供；欢迎 fork，或联系作者加入协作者继续维护。
+> 维护与发布流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 这一版做了什么
 
