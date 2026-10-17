@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>阅读器 · 布局演示</title>
+<style>
+:root{
+  --bg:#f4efe6; --surface:#fffdf8; --surface-alt:#ece3d5; --text:#2c2622;
+  --muted:#877c6f; --border:#e2d8c9; --accent:#8c5a35; --accent-contrast:#fffaf3;
+  --shadow:0 10px 30px rgba(70,50,30,.10);
+  --font-serif:'Songti SC','SimSun','Noto Serif SC',serif;
+  --font-sans:'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+}
+:root[data-theme=sepia]{
+  --bg:#ece0c8; --surface:#f7eeda; --surface-alt:#e2d3b6; --text:#3b3126;
+  --muted:#8d7f6b; --border:#d9c9a9; --accent:#8a5a2b; --accent-contrast:#fdf6e8;
+  --shadow:0 10px 30px rgba(90,65,30,.14);
+}
+:root[data-theme=dark]{
+  --bg:#14161a; --surface:#1c1f24; --surface-alt:#24282e; --text:#d6d2ca;
+  --muted:#8b8882; --border:#2b3036; --accent:#c08b58; --accent-contrast:#1a1409;
+  --shadow:0 10px 30px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font-sans);
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.screen{display:none;height:100%}
+.screen.active{display:flex;flex-direction:column}
+.hint{font-size:12px;color:var(--muted)}
+
+/* ---------- 书架 ---------- */
+.shelf{padding:40px 44px 60px;overflow-y:auto}
+.shelf-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px}
+.shelf-head h1{margin:0;font-size:30px;letter-spacing:3px}
+.shelf-sub{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.shelf-actions{display:flex;gap:10px;align-items:center}
+.btn{padding:10px 18px;border-radius:10px;font-weight:600;background:var(--accent);color:var(--accent-contrast)}
+.btn.ghost{background:var(--surface-alt);color:var(--text);font-weight:500}
+.btn.sm{padding:6px 12px;font-size:13px;border-radius:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.card{
+  display:grid;grid-template-columns:58px 1fr;grid-template-areas:'spine info' 'actions actions';
+  gap:14px;padding:18px;background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;box-shadow:var(--shadow);
+}
+.spine{
+  grid-area:spine;width:58px;height:80px;border-radius:8px 4px 4px 8px;display:grid;place-items:center;
+  background:linear-gradient(160deg,var(--accent),var(--surface-alt));color:var(--accent-contrast);
+  font-family:var(--font-serif);font-size:27px;
+}
+.info{grid-area:info;min-width:0}
+.info h2{margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.author{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.meta{margin:2px 0 10px;font-size:12px;color:var(--muted);opacity:.85}
+.bar{height:4px;border-radius:2px;background:var(--surface-alt);overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--accent)}
+.pct{margin:6px 0 0;font-size:12px;color:var(--muted)}
+.actions{grid-area:actions;display:flex;justify-content:flex-end;gap:8px}
+.ghost-btn{padding:6px 12px;border-radius:8px;font-size:13px;color:var(--muted)}
+.ghost-btn:hover{background:var(--surface-alt);color:var(--text)}
+
+/* ---------- 阅读器 ---------- */
+.reader{height:100%;display:flex;flex-direction:column;background:var(--bg)}
+.progress{height:3px;background:var(--border);flex:none}
+.progress>span{display:block;height:100%;background:var(--accent);transition:width .25s}
+.top{
+  display:flex;align-items:center;gap:14px;padding:10px 18px;flex:none;
+  border-bottom:1px solid var(--border);background:var(--surface);
+}
+.top .back{padding:8px 12px;border-radius:8px;color:var(--muted)}
+.top .back:hover{background:var(--surface-alt);color:var(--text)}
+.title{flex:1;min-width:0;display:flex;align-items:baseline;gap:12px}
+.title strong{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{display:flex;gap:6px}
+.tools button{padding:8px 12px;border-radius:8px;color:var(--muted);font-size:13px}
+.tools button:hover{background:var(--surface-alt);color:var(--text)}
+.tools button.on{background:var(--surface-alt);color:var(--accent)}
+
+.body{flex:1;min-height:0;display:flex}
+.toc{
+  width:250px;flex:none;overflow-y:auto;padding:10px 8px;
+  border-right:1px solid var(--border);background:var(--surface);
+}
+.toc h3{margin:10px 10px 6px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:1px}
+.toc-item{display:flex;gap:10px;width:100%;padding:8px 10px;border-radius:8px;text-align:left;font-size:13px;color:var(--muted)}
+.toc-item:hover{background:var(--surface-alt)}
+.toc-item.on{background:var(--surface-alt);color:var(--accent);font-weight:600}
+.toc-no{width:24px;flex:none;opacity:.7;font-variant-numeric:tabular-nums}
+.toc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bookmark-list{border-top:1px solid var(--border);margin-top:10px;padding-top:6px}
+.bm{display:flex;gap:8px;padding:7px 10px;border-radius:8px;font-size:12px;color:var(--muted);width:100%;text-align:left}
+.bm:hover{background:var(--surface-alt);color:var(--text)}
+.bm .dot{color:var(--accent)}
+
+.viewport{flex:1;min-width:0;overflow:hidden;position:relative;cursor:pointer;display:flex;justify-content:center}
+/* 版心：分页必须严格以它为单位，否则下一列会从右侧漏出来 */
+.page-frame{height:100%;overflow:hidden;position:relative;width:100%}
+.pages{
+  height:100%;padding:30px 46px;column-gap:72px;column-fill:auto;
+  font-family:var(--font-serif);text-align:justify;letter-spacing:.01em;
+  transition:transform .22s ease;will-change:transform;
+}
+.pages p{margin:0 0 .85em;text-indent:2em;white-space:pre-wrap}
+.pages .ch-title{font-family:var(--font-sans);font-size:1.15em;font-weight:600;text-indent:0;margin:0 0 1.1em;letter-spacing:2px}
+.highlight{background:rgba(200,140,60,.35);border-radius:3px}
+
+.bottom{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;
+  padding:8px 18px;border-top:1px solid var(--border);background:var(--surface);
+}
+.bottom .nav{padding:8px 14px;border-radius:8px;color:var(--muted);font-size:13px}
+.bottom .nav:hover:not(:disabled){background:var(--surface-alt);color:var(--text)}
+.bottom .nav:disabled{opacity:.35;cursor:default}
+.status{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- 浮层 ---------- */
+.overlay{position:fixed;inset:0;background:rgba(20,15,10,.38);display:none;z-index:60}
+.overlay.open{display:block}
+.panel{
+  position:absolute;top:0;right:0;bottom:0;width:340px;padding:18px 20px;
+  background:var(--surface);box-shadow:var(--shadow);overflow-y:auto;
+}
+.panel h3{margin:0 0 14px;font-size:14px;letter-spacing:1px}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:13px;color:var(--muted)}
+.row label,.row .label{width:44px;flex:none}
+.row input[type=range]{flex:1;accent-color:var(--accent)}
+.row .val{width:42px;text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
+.seg{display:flex;flex:1;gap:4px;padding:3px;background:var(--surface-alt);border-radius:9px}
+.seg button{flex:1;padding:6px 4px;border-radius:7px;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--accent);font-weight:600}
+
+/* 搜索 */
+.search{margin:6vh auto 0;width:min(680px,90vw);background:var(--surface);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.search input{
+  width:100%;padding:16px 18px;border:0;border-bottom:1px solid var(--border);
+  background:transparent;color:var(--text);font-size:15px;outline:none;
+}
+.results{max-height:52vh;overflow-y:auto}
+.result{display:block;width:100%;text-align:left;padding:12px 18px;border-bottom:1px solid var(--border)}
+.result:hover{background:var(--surface-alt)}
+.result .where{font-size:11px;color:var(--muted);margin-bottom:4px}
+.result .ctx{font-family:var(--font-serif);font-size:13px;line-height:1.6}
+.result mark{background:rgba(200,140,60,.42);color:inherit;border-radius:2px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+/* 统计 */
+.stats{margin:8vh auto 0;width:min(720px,92vw);background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:24px}
+.stats h2{margin:0 0 18px;font-size:18px;letter-spacing:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.kpi{background:var(--surface-alt);border-radius:12px;padding:14px}
+.kpi .n{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11px;color:var(--muted);margin-top:4px}
+.chart{display:flex;align-items:flex-end;gap:10px;height:140px;padding:0 2px}
+.chart .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.chart .b{width:100%;background:var(--accent);border-radius:6px 6px 3px 3px;min-height:3px;opacity:.85}
+.chart .d{font-size:11px;color:var(--muted)}
+
+/* 老板模式 */
+#boss{position:fixed;display:none;z-index:120;width:420px;height:300px;flex-direction:column;
+  border-radius:10px;overflow:hidden;border:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 86%, transparent);
+  box-shadow:0 12px 36px rgba(0,0,0,.22)}
+#boss.on{display:flex}
+#boss.dim{background:color-mix(in srgb,var(--surface) 52%, transparent)}
+#boss .grip{height:14px;flex:none;cursor:move;background:color-mix(in srgb,var(--surface-alt) 80%, transparent);display:flex;align-items:center;justify-content:center}
+#boss .grip::after{content:'';width:34px;height:3px;border-radius:2px;background:var(--muted);opacity:.55}
+#boss .bz{flex:1;overflow:hidden;padding:10px 12px;font-family:var(--font-serif);line-height:1.75;text-align:justify;white-space:pre-wrap}
+#boss .bf{flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+#boss .bf button{font-size:11px;color:var(--muted)}
+#boss .bf button:hover{color:var(--accent)}
+
+/* 说明条 */
+.tip{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:200;pointer-events:none;
+  background:rgba(30,22,14,.82);color:#f4efe6;font-size:12px;padding:8px 14px;border-radius:999px;
+  opacity:1;transition:opacity .4s}
+</style>
+</head>
+<body>
+
+<!-- ===== 书架 ===== -->
+<section id="shelf" class="screen active">
+  <div class="shelf">
+    <div class="shelf-head">
+      <div>
+        <h1>书架</h1>
+        <p class="shelf-sub" id="shelf-sub">共 3 本书</p>
+      </div>
+      <div class="shelf-actions">
+        <button class="ghost-btn" id="open-stats">阅读统计</button>
+        <button class="btn" id="fake-import">导入 EPUB</button>
+      </div>
+    </div>
+    <div class="grid" id="book-grid"></div>
+  </div>
+</section>
+
+<!-- ===== 阅读器 ===== -->
+<section id="reader" class="screen">
+  <div class="reader">
+    <div class="progress"><span id="progress-bar" style="width:0"></span></div>
+    <div class="top">
+      <button class="back" id="to-shelf">← 书架</button>
+      <div class="title"><strong id="r-title">山海旧事</strong><span id="r-chapter">第一章 归途</span></div>
+      <div class="tools">
+        <button id="btn-search">搜索</button>
+        <button id="btn-toc" class="on">目录</button>
+        <button id="btn-mark">书签</button>
+        <button id="btn-type">排版</button>
+        <button id="btn-boss">老板模式</button>
+      </div>
+    </div>
+    <div class="body">
+      <aside class="toc" id="toc">
+        <h3>目录</h3>
+        <div id="toc-list"></div>
+        <div class="bookmark-list">
+          <h3>书签</h3>
+          <div id="bm-list"><p class="hint" style="padding:0 10px">还没有书签</p></div>
+        </div>
+      </aside>
+      <div class="viewport" id="viewport">
+        <div class="page-frame" id="page-frame">
+          <div class="pages" id="pages"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <button class="nav" id="prev">← 上一页</button>
+      <span class="status" id="status">第 1 / 1 页 · 0.0%</span>
+      <button class="nav" id="next">下一页 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 搜索 ===== -->
+<div class="overlay" id="search-overlay">
+  <div class="search">
+    <input id="search-input" placeholder="搜索本书内容…（Esc 关闭）" autocomplete="off">
+    <div class="results" id="search-results"><p class="empty">输入关键词开始搜索</p></div>
+  </div>
+</div>
+
+<!-- ===== 统计 ===== -->
+<div class="overlay" id="stats-overlay">
+  <div class="stats">
+    <h2>阅读统计</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="n">48</div><div class="l">今日分钟</div></div>
+      <div class="kpi"><div class="n">26.4h</div><div class="l">累计时长</div></div>
+      <div class="kpi"><div class="n">31</div><div class="l">累计天数</div></div>
+      <div class="kpi"><div class="n">412</div><div class="l">字/分钟</div></div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <p class="hint" style="margin:14px 0 0">最近 7 天阅读时长（分钟）</p>
+  </div>
+</div>
+
+<!-- ===== 排版 ===== -->
+<div class="overlay" id="type-overlay">
+  <div class="panel">
+    <h3>排版</h3>
+    <div class="row"><label>字号</label><input type="range" id="f-size" min="15" max="32" step="1"><span class="val" id="v-size"></span></div>
+    <div class="row"><label>行距</label><input type="range" id="f-lh" min="1.4" max="2.6" step="0.05"><span class="val" id="v-lh"></span></div>
+    <div class="row"><label>版心</label><input type="range" id="f-width" min="520" max="900" step="20"><span class="val" id="v-width"></span></div>
+    <div class="row"><span class="label">主题</span>
+      <div class="seg" id="seg-theme">
+        <button data-v="light">纸白</button><button data-v="sepia">羊皮纸</button><button data-v="dark">夜间</button>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:18px">← → 翻页 · Ctrl+F 搜索 · Ctrl+Alt+B 老板模式 · Esc 返回</p>
+  </div>
+</div>
+
+<!-- ===== 老板模式窗口 ===== -->
+<div id="boss">
+  <div class="grip" id="boss-grip"></div>
+  <div class="bz" id="boss-text"></div>
+  <div class="bf">
+    <span id="boss-status">老板模式</span>
+    <span>
+      <button id="boss-toggle-dim">更透明</button>
+      <button id="boss-restore">还原</button>
+    </span>
+  </div>
+</div>
+
+<div class="tip" id="tip">这是布局演示：内容为示例数据，交互都可用</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- 示例内容 ---------------- */
+  const BOOKS = [
+    {
+      id: 'shanhai',
+      title: '山海旧事',
+      author: '沈砚',
+      chapters: [
+        { title: '第一章 归途', text:
+          '雨下了整夜，青石板路上积着水，倒映出街口那盏将要熄灭的灯笼。\n' +
+          '陈渡把伞收起来，靠在门边，抬手叩了三下门环。没有人应。\n' +
+          '他退后一步，从怀里摸出那把已经磨得发亮的铜钥匙，插进锁孔里转了半圈。门轴发出一声悠长的呻吟，像是很多年没有被人推动过。\n' +
+          '屋里的空气又冷又静，带着旧木头和灰的味道。他把行李放在门厅，径直走向书房。\n' +
+          '窗纸上有个拇指大的破洞，风从那里钻进来，把桌上的纸吹得翘起一角。他伸手按住，指尖沾了一层薄灰。\n' +
+          '这座宅子在父亲去世之后就没有人住了。管家每年托人打扫两次，其余时间，它就安静地待在这条巷子的尽头，像一个不肯开口的人。\n' +
+          '陈渡在书桌前站了很久。他没有开灯，就着窗外的天光，看清了桌上那方砚台的纹路。砚台边缘缺了一小块，是他十岁那年不小心摔的。\n' +
+          '他忽然想起父亲当时并没有骂他，只是把砚台捡起来，用袖子擦了擦，然后说：东西坏了不要紧，别装作它没坏。' },
+        { title: '第二章 旧信', text:
+          '书桌上还留着他离开那年的样子：一方砚台，两本摊开的线装书，以及一只倒扣的茶杯。\n' +
+          '他拉开左边的抽屉，最上面压着一叠信。信纸已经泛黄，字迹却清楚，每一封的末尾都写着同一句话：你若归来，不必叩门。\n' +
+          '陈渡把信一封一封地看下去。前面几封写的都是些琐事：今年的雨比往年多，巷口那棵槐树被雷劈去了一半，隔壁的孩子们都长高了。\n' +
+          '看到第七封的时候，他的手停在半空中。那封信只有短短两行，墨迹比其他的都要深，像是写的时候手在抖。\n' +
+          '信上写：我知道你会回来，但我大概等不到那一天了。别去找那些人，也别问那件事。\n' +
+          '他把信折好，放回原处，又拿出来，再折一次。窗外的雨不知什么时候停了，屋檐上的水一滴一滴落下来，砸在石阶上。\n' +
+          '有些事情，写下来的时候以为是交代，读的时候才发现是恳求。' },
+        { title: '第三章 渡口', text:
+          '天亮的时候雨停了，江面上浮着一层薄雾。\n' +
+          '渡口的老船工正在解缆，看见他，愣了一会儿，才把手里那根竹篙放下。\n' +
+          '“你回来了。”老船工说，声音很平，听不出惊讶。\n' +
+          '“回来了。”陈渡说。他站在石阶上，看着江心的雾一点点散开。\n' +
+          '“船还走不走？”他问。老船工摇了摇头，指了指上游的方向。\n' +
+          '雾散尽的地方，露出半截黑色的桥墩。那是去年才动工的桥，据说要修三年，把南岸和北岸连起来。桥修好之后，这个渡口就该废弃了。\n' +
+          '“修桥的人来找过我，”老船工说，“问我这江有多深。我说我不知道，我撑了四十年船，只知道哪里能过，哪里不能过。”\n' +
+          '陈渡笑了一下。他忽然明白父亲信里那句话的意思：不必叩门，是因为门本来就一直开着。' },
+        { title: '第四章 长夜', text:
+          '入夜之后，整座城安静得不像话。\n' +
+          '陈渡坐在书房里，把灯芯挑亮了一点。窗外的檐角上挂着水珠，一滴一滴地落在青石上，节奏很稳，像谁在远处敲更。\n' +
+          '他摊开一张纸，蘸墨，写下第一行字。写到一半，笔尖停住，墨在纸上洇开一个小点。\n' +
+          '他忽然明白了那些信为什么都只有短短几行。有些话，一旦写全了，就再也收不回去了。\n' +
+          '院子里的槐树影子被月光投在墙上，摇摇晃晃。他想起小时候父亲教他写字，总说：字要写慢一点，慢下来才看得见自己的心。\n' +
+          '他把那张纸揉成一团，重新铺一张。这一次，他从头写起，写得很慢。\n' +
+          '窗外的更声又响了一下。天快亮了。' }
+      ]
+    },
+    {
+      id: 'changye',
+      title: '长夜行',
+      author: '未名',
+      chapters: [
+        { title: '第一章 出发', text:
+          '火车在凌晨三点驶出站台，车厢里只剩下几个人。\n' +
+          '林晚把背包放在脚边，靠着窗户坐下。玻璃上有一层水汽，她用指头划了一道，外面的灯火就顺着那道缝流进来。\n' +
+          '她要去的地方在地图上只是一个点，没有名字，只有一条细细的公路通进去。' }
+      ]
+    },
+    {
+      id: 'guangying',
+      title: '城市观察笔记',
+      author: '周鹭',
+      chapters: [
+        { title: '序', text:
+          '这本笔记记的都是些没什么用的事：某个路口的红灯有多长，卖豆浆的摊子几点收摊，下雨天哪一段路会积水。\n' +
+          '但正是这些没什么用的事，让一座城市变得可以辨认。' }
+      ]
+    }
+  ];
+
+  const PROGRESS = { shanhai: 0.34, changye: 0, guangying: 1 };
+
+  /* ---------------- 状态 ---------------- */
+  const state = {
+    bookIndex: 0,
+    chapter: 0,
+    page: 0,
+    pageCount: 1,
+    fontSize: 19,
+    lineHeight: 1.9,
+    width: 720,
+    theme: 'light',
+    tocOpen: true,
+    bookmarks: [],
+    boss: false,
+    bossDim: false
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const book = () => BOOKS[state.bookIndex];
+
+  /* ---------------- 书架 ---------------- */
+  function renderShelf() {
+    const grid = $('book-grid');
+    grid.innerHTML = '';
+    BOOKS.forEach((b, i) => {
+      const pct = Math.round((PROGRESS[b.id] || 0) * 100);
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.innerHTML =
+        '<div class="spine">' + b.title.slice(0, 1) + '</div>' +
+        '<div class="info"><h2>' + b.title + '</h2>' +
+        '<p class="author">' + b.author + '</p>' +
+        '<p class="meta">EPUB · ' + b.chapters.length + ' 章 · ' + countChars(b) + ' 字</p>' +
+        '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
+        '<p class="pct">' + (pct > 0 ? '已读 ' + pct + '%' : '未开始') + '</p></div>' +
+        '<div class="actions">' +
+        '<button class="btn sm" data-open="' + i + '">' + (pct > 0 ? '继续阅读' : '开始阅读') + '</button>' +
+        '<button class="ghost-btn" data-del="' + i + '">删除</button></div>';
+      grid.appendChild(card);
+    });
+    $('shelf-sub').textContent = '共 ' + BOOKS.length + ' 本书';
+    grid.querySelectorAll('[data-open]').forEach((btn) => {
+      btn.addEventListener('click', () => openBook(Number(btn.dataset.open)));
+    });
+    grid.querySelectorAll('[data-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        btn.closest('.card').style.opacity = '.35';
+        btn.textContent = '已删除（演示）';
+      });
+    });
+  }
+
+  function countChars(b) {
+    return b.chapters.reduce((n, c) => n + c.text.length, 0);
+  }
+
+  /* ---------------- 打开与渲染 ---------------- */
+  function openBook(index) {
+    state.bookIndex = index;
+    state.chapter = 0;
+    state.page = 0;
+    show('reader');
+    renderReader();
+  }
+
+  function show(which) {
+    document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+    $(which).classList.add('active');
+  }
+
+  function renderReader() {
+    const b = book();
+    $('r-title').textContent = b.title;
+    $('r-chapter').textContent = b.chapters[state.chapter].title;
+    $('toc').style.display = state.tocOpen ? '' : 'none';
+    $('btn-toc').classList.toggle('on', state.tocOpen);
+
+    const list = $('toc-list');
+    list.innerHTML = '';
+    b.chapters.forEach((c, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'toc-item' + (i === state.chapter ? ' on' : '');
+      btn.innerHTML = '<span class="toc-no">' + (i + 1) + '</span><span class="toc-name">' + c.title + '</span>';
+      btn.addEventListener('click', () => gotoChapter(i));
+      list.appendChild(btn);
+    });
+
+    const pages = $('pages');
+    pages.innerHTML = '<p class="ch-title">' + b.chapters[state.chapter].title + '</p>' +
+      b.chapters[state.chapter].text.split('\n').map((line) => '<p>' + escapeHtml(line) + '</p>').join('');
+    applyTypography();
+    layoutPages();
+    renderBookmarks();
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  }
+
+  function applyTypography() {
+    const pages = $('pages');
+    pages.style.fontSize = state.fontSize + 'px';
+    pages.style.lineHeight = state.lineHeight;
+    // 版心宽度落在 page-frame 上，分页列宽随之收缩，列不会溢出到视口外
+    $('page-frame').style.maxWidth = state.width + 'px';
+  }
+
+  /* ---------------- 分页 ---------------- */
+  function layoutPages() {
+    const viewport = $('viewport');
+    const pages = $('pages');
+    const cs = getComputedStyle(pages);
+    const padL = parseFloat(cs.paddingLeft);
+    const padR = parseFloat(cs.paddingRight);
+    const gap = parseFloat(cs.columnGap) || 0;
+
+    const colWidth = Math.max(200, pages.clientWidth - padL - padR);
+    pages.style.columnWidth = colWidth + 'px';
+
+    const totalWidth = pages.scrollWidth - padL - padR;
+    const count = Math.max(1, Math.round((totalWidth + gap) / (colWidth + gap)));
+    state.pageCount = count;
+    state.page = Math.min(state.page, count - 1);
+    goPage(state.page, true);
+  }
+
+  function goPage(page, silent) {
+    const viewport = $('viewport');
+    const pages = $('pages');
+    const cs = getComputedStyle(pages);
+    const padL = parseFloat(cs.paddingLeft);
+    const padR = parseFloat(cs.paddingRight);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const colWidth = Math.max(200, pages.clientWidth - padL - padR);
+    const step = colWidth + gap;
+
+    state.page = Math.max(0, Math.min(state.pageCount - 1, page));
+    pages.style.transform = 'translateX(' + (-state.page * step) + 'px)';
+
+    if (!silent) updateStatus();
+    else updateStatus();
+    viewport.style.cursor = 'pointer';
+  }
+
+  function updateStatus() {
+    const b = book();
+    const overall = (state.chapter + (state.pageCount ? state.page / state.pageCount : 0)) / b.chapters.length;
+    $('status').textContent = '第 ' + (state.page + 1) + ' / ' + state.pageCount +
+      ' 页 · ' + b.chapters[state.chapter].title + ' · ' + (overall * 100).toFixed(1) + '%';
+    $('progress-bar').style.width = (overall * 100).toFixed(1) + '%';
+    $('prev').disabled = state.page === 0 && state.chapter === 0;
+    $('next').disabled = state.page >= state.pageCount - 1 && state.chapter >= b.chapters.length - 1;
+    updateBossText();
+  }
+
+  function nextPage() {
+    if (state.page < state.pageCount - 1) return goPage(state.page + 1);
+    if (state.chapter < book().chapters.length - 1) {
+      state.chapter += 1;
+      state.page = 0;
+      renderReader();
+    }
+  }
+
+  function prevPage() {
+    if (state.page > 0) return goPage(state.page - 1);
+    if (state.chapter > 0) {
+      state.chapter -= 1;
+      state.page = 0;
+      renderReader();
+      goPage(state.pageCount - 1);
+    }
+  }
+
+  function gotoChapter(i) {
+    state.chapter = Math.max(0, Math.min(book().chapters.length - 1, i));
+    state.page = 0;
+    renderReader();
+  }
+
+  /* ---------------- 书签 ---------------- */
+  function renderBookmarks() {
+    const box = $('bm-list');
+    const list = state.bookmarks.filter((m) => m.book === book().id);
+    if (list.length === 0) {
+      box.innerHTML = '<p class="hint" style="padding:0 10px">还没有书签</p>';
+      return;
+    }
+    box.innerHTML = '';
+    list.forEach((m, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'bm';
+      btn.innerHTML = '<span class="dot">●</span><span>' + m.chapterTitle + ' · 第 ' + (m.page + 1) + ' 页</span>';
+      btn.addEventListener('click', () => {
+        gotoChapter(m.chapter);
+        goPage(m.page);
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function addBookmark() {
+    const b = book();
+    state.bookmarks.push({
+      book: b.id,
+      chapter: state.chapter,
+      page: state.page,
+      chapterTitle: b.chapters[state.chapter].title
+    });
+    renderBookmarks();
+    flashTip('已添加书签');
+  }
+
+  /* ---------------- 搜索 ---------------- */
+  function runSearch(query) {
+    const box = $('search-results');
+    const q = query.trim();
+    if (!q) {
+      box.innerHTML = '<p class="empty">输入关键词开始搜索</p>';
+      return;
+    }
+    const hits = [];
+    const b = book();
+    b.chapters.forEach((c, ci) => {
+      const text = c.text;
+      let from = 0;
+      while (hits.length < 40) {
+        const at = text.indexOf(q, from);
+        if (at === -1) break;
+        hits.push({ chapter: ci, title: c.title, at: at, text: text });
+        from = at + q.length;
+      }
+    });
+    if (hits.length === 0) {
+      box.innerHTML = '<p class="empty">没有找到「' + escapeHtml(q) + '」</p>';
+      return;
+    }
+    box.innerHTML = '';
+    hits.forEach((h) => {
+      const start = Math.max(0, h.at - 18);
+      const end = Math.min(h.text.length, h.at + q.length + 18);
+      const before = escapeHtml(h.text.slice(start, h.at));
+      const hit = escapeHtml(h.text.slice(h.at, h.at + q.length));
+      const after = escapeHtml(h.text.slice(h.at + q.length, end));
+      const btn = document.createElement('button');
+      btn.className = 'result';
+      btn.innerHTML = '<div class="where">' + h.title + '</div>' +
+        '<div class="ctx">' + (start > 0 ? '…' : '') + before + '<mark>' + hit + '</mark>' + after + (end < h.text.length ? '…' : '') + '</div>';
+      btn.addEventListener('click', () => {
+        closeOverlays();
+        gotoChapter(h.chapter);
+        flashTip('已跳转到「' + h.title + '」中的命中位置（演示不做行内定位）');
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  /* ---------------- 统计 ---------------- */
+  function renderChart() {
+    const days = [
+      { d: '周一', v: 42 }, { d: '周二', v: 68 }, { d: '周三', v: 25 },
+      { d: '周四', v: 90 }, { d: '周五', v: 74 }, { d: '周六', v: 120 }, { d: '周日', v: 48 }
+    ];
+    const max = Math.max.apply(null, days.map((x) => x.v));
+    const chart = $('chart');
+    chart.innerHTML = '';
+    days.forEach((x) => {
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.innerHTML = '<div class="b" style="height:' + Math.round((x.v / max) * 100) + '%"></div><div class="d">' + x.d + '</div>';
+      chart.appendChild(col);
+    });
+  }
+
+  /* ---------------- 老板模式 ---------------- */
+  function toggleBoss(on) {
+    state.boss = on === undefined ? !state.boss : on;
+    const panel = $('boss');
+    panel.classList.toggle('on', state.boss);
+    if (state.boss) {
+      if (!panel.dataset.placed) {
+        const rect = panel.getBoundingClientRect();
+        panel.style.left = '16px';
+        panel.style.top = (window.innerHeight - rect.height - 16) + 'px';
+        panel.dataset.placed = '1';
+      }
+      updateBossText();
+      flashTip('老板模式：拖动顶部把手可移动 · Ctrl+Alt+B 还原');
+    }
+  }
+
+  function updateBossText() {
+    if (!state.boss) return;
+    const c = book().chapters[state.chapter];
+    $('boss-text').textContent = c.title + '\n\n' + c.text.slice(0, 260) + '…';
+    $('boss-status').textContent = '老板模式 · 第 ' + (state.page + 1) + '/' + state.pageCount + ' 页';
+  }
+
+  /* 拖动 */
+  (function draggable() {
+    const panel = $('boss');
+    const grip = $('boss-grip');
+    let dragging = false, ox = 0, oy = 0;
+    grip.addEventListener('mousedown', (e) => {
+      dragging = true;
+      const r = panel.getBoundingClientRect();
+      ox = e.clientX - r.left;
+      oy = e.clientY - r.top;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const x = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - ox));
+      const y = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - oy));
+      panel.style.left = x + 'px';
+      panel.style.top = y + 'px';
+      panel.style.bottom = 'auto';
+    });
+    window.addEventListener('mouseup', () => { dragging = false; });
+  })();
+
+  /* ---------------- 浮层 ---------------- */
+  function openOverlay(id) {
+    closeOverlays();
+    $(id).classList.add('open');
+    if (id === 'search-overlay') {
+      $('search-input').value = '';
+      $('search-results').innerHTML = '<p class="empty">输入关键词开始搜索</p>';
+      setTimeout(() => $('search-input').focus(), 30);
+    }
+    if (id === 'stats-overlay') renderChart();
+    if (id === 'type-overlay') syncTypeControls();
+  }
+  function closeOverlays() {
+    document.querySelectorAll('.overlay').forEach((o) => o.classList.remove('open'));
+  }
+
+  function syncTypeControls() {
+    $('f-size').value = state.fontSize;
+    $('v-size').textContent = state.fontSize;
+    $('f-lh').value = state.lineHeight;
+    $('v-lh').textContent = Number(state.lineHeight).toFixed(2);
+    $('f-width').value = state.width;
+    $('v-width').textContent = state.width;
+    $('seg-theme').querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.v === state.theme);
+    });
+  }
+
+  function reflow() {
+    const keepPage = state.page;
+    applyTypography();
+    layoutPages();
+    goPage(Math.min(keepPage, state.pageCount - 1));
+  }
+
+  /* ---------------- 提示 ---------------- */
+  let tipTimer = null;
+  function flashTip(text) {
+    const tip = $('tip');
+    tip.textContent = text;
+    tip.style.opacity = '1';
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => { tip.style.opacity = '0'; }, 2600);
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+  function bind() {
+    $('to-shelf').addEventListener('click', () => { show('shelf'); state.boss = false; $('boss').classList.remove('on'); });
+    $('open-stats').addEventListener('click', () => openOverlay('stats-overlay'));
+    $('fake-import').addEventListener('click', () => flashTip('演示版不解析真实文件，正式版走系统文件对话框'));
+
+    $('prev').addEventListener('click', prevPage);
+    $('next').addEventListener('click', nextPage);
+    $('viewport').addEventListener('click', (e) => {
+      const rect = $('viewport').getBoundingClientRect();
+      if (e.clientX - rect.left < rect.width / 3) prevPage();
+      else nextPage();
+    });
+
+    $('btn-toc').addEventListener('click', () => {
+      state.tocOpen = !state.tocOpen;
+      renderReader();
+    });
+    $('btn-mark').addEventListener('click', addBookmark);
+    $('btn-search').addEventListener('click', () => openOverlay('search-overlay'));
+    $('btn-type').addEventListener('click', () => openOverlay('type-overlay'));
+    $('btn-boss').addEventListener('click', () => toggleBoss(true));
+
+    $('search-input').addEventListener('input', (e) => runSearch(e.target.value));
+
+    document.querySelectorAll('.overlay').forEach((o) => {
+      o.addEventListener('click', (e) => { if (e.target === o) closeOverlays(); });
+    });
+
+    $('f-size').addEventListener('input', (e) => {
+      state.fontSize = Number(e.target.value);
+      $('v-size').textContent = state.fontSize;
+      reflow();
+    });
+    $('f-lh').addEventListener('input', (e) => {
+      state.lineHeight = Number(e.target.value);
+      $('v-lh').textContent = state.lineHeight.toFixed(2);
+      reflow();
+    });
+    $('f-width').addEventListener('input', (e) => {
+      state.width = Number(e.target.value);
+      $('v-width').textContent = state.width;
+      reflow();
+    });
+    $('seg-theme').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      state.theme = btn.dataset.v;
+      document.documentElement.dataset.theme = state.theme;
+      syncTypeControls();
+    });
+
+    $('boss-restore').addEventListener('click', () => toggleBoss(false));
+    $('boss-toggle-dim').addEventListener('click', () => {
+      state.bossDim = !state.bossDim;
+      $('boss').classList.toggle('dim', state.bossDim);
+      $('boss-toggle-dim').textContent = state.bossDim ? '更清晰' : '更透明';
+    });
+
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('reader').classList.contains('active')) return;
+      layoutPages();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.altKey && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        toggleBoss();
+        return;
+      }
+      if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        openOverlay('search-overlay');
+        return;
+      }
+      if (e.key === 'Escape') {
+        const open = document.querySelector('.overlay.open');
+        if (open) return closeOverlays();
+        if (state.boss) return toggleBoss(false);
+        if (document.getElementById('reader').classList.contains('active')) return show('shelf');
+        return;
+      }
+      if (!document.getElementById('reader').classList.contains('active')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        nextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevPage();
+      }
+    });
+  }
+
+  /* ---------------- 启动 ---------------- */
+  document.documentElement.dataset.theme = state.theme;
+  renderShelf();
+  bind();
+  setTimeout(() => { $('tip').style.opacity = '0'; }, 4200);
+})();
+</script>
+</body>
+</html>
